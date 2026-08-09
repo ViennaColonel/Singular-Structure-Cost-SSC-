@@ -14,6 +14,12 @@ All methods use the same eight-direction Semi-Global Matching (SGM) stage.
 Traditional-only methods use the base SGM penalties. SGSC and every SGSC fusion
 use a configurable penalty multiplier (default: 3).
 
+SGSC represents each local patch with the selected SVD modes. For mode `k`,
+the descriptor uses `sqrt(sigma_k) * [u_k; v_k]`; all selected modes are
+concatenated and jointly normalized before matching. Absolute U/V correlations
+remove the arbitrary sign ambiguity of the singular vectors. The SGSC cost is
+one minus this concatenated-descriptor similarity.
+
 ## Requirements
 
 - MATLAB R2021a or newer

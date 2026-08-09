@@ -25,7 +25,7 @@ function config = stereo_default_config()
     config.census_lambda = 30.0;
     config.census_window = [5 5];
 
-    config.sgsc_window = 5;
+    config.sgsc_window = 5;%Same to block_size 
     config.sgsc_modes = [1 2 3];
     config.sgsc_use_weighting = true;
     % Keep 1 for compatibility with the original structural-cost experiment.

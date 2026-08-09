@@ -2,8 +2,9 @@ function [cost,energy_map] = sgsc_cost_volume(left,right,window_size, ...
         disparity_range,target_modes,use_weighting)
 %SGSC_COST_VOLUME Compute the Spectral-Gap Structural Cost volume.
 
-% Local image patches are represented by ordered spectral modes. Matching
-% cost measures the structural disagreement between corresponding modes.
+% Local image patches are represented by a singular-value-weighted
+% concatenation of all selected U/V modes. Absolute correlations remove the
+% arbitrary SVD sign, and all modes are normalized jointly.
 
     if max(target_modes)>window_size
         error('A requested SGSC mode exceeds sgsc_window.');
@@ -25,8 +26,9 @@ function [cost,energy_map] = sgsc_cost_volume(left,right,window_size, ...
         if start_x>end_x, continue; end
         left_columns=start_x:end_x;
         right_columns=left_columns-disparity;
-        weighted_sum=zeros(height,numel(left_columns));
-        weight_sum=zeros(height,numel(left_columns));
+        similarity_numerator=zeros(height,numel(left_columns));
+        descriptor_energy_left=zeros(height,numel(left_columns));
+        descriptor_energy_right=zeros(height,numel(left_columns));
 
         for mode=target_modes
             ul=u_left(:,left_columns,:,mode);
@@ -37,16 +39,25 @@ function [cost,energy_map] = sgsc_cost_volume(left,right,window_size, ...
             sr=sigma_right(:,right_columns,mode);
             similarity_u=abs(sum(ul.*ur,3));
             similarity_v=abs(sum(vl.*vr,3));
-            raw_cost=1-similarity_u.*similarity_v;
             if use_weighting
-                weight=sqrt(sl.*sr);
+                weight=sqrt(max(sl.*sr,0));
+                energy_left=max(sl,0);
+                energy_right=max(sr,0);
             else
-                weight=ones(size(raw_cost));
+                weight=ones(size(similarity_u));
+                energy_left=ones(size(similarity_u));
+                energy_right=ones(size(similarity_u));
             end
-            weighted_sum=weighted_sum+raw_cost.*weight;
-            weight_sum=weight_sum+weight;
+            similarity_numerator=similarity_numerator+ ...
+                weight.*(similarity_u+similarity_v);
+            descriptor_energy_left=descriptor_energy_left+energy_left;
+            descriptor_energy_right=descriptor_energy_right+energy_right;
         end
-        cost(:,left_columns,index)=weighted_sum./(weight_sum+1e-9);
+        denominator=2*sqrt(descriptor_energy_left.* ...
+            descriptor_energy_right)+eps;
+        similarity=similarity_numerator./denominator;
+        similarity=min(max(similarity,0),1);
+        cost(:,left_columns,index)=1-similarity;
     end
 end
 
